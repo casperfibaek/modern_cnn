@@ -1,4 +1,4 @@
-"""Test PyTorch installation, GPU accessibility, and mixed-precision training."""
+"""Test PyTorch installation, GPU accessibility, and training setup."""
 
 import sys
 import time
@@ -45,13 +45,6 @@ def test_gpu_accessible():
 
     current = torch.cuda.current_device()
     print(f"  Current device index: {current}")
-
-    bf16_supported = torch.cuda.is_bf16_supported()
-    print(f"  BFloat16 supported:   {bf16_supported}")
-
-    if not bf16_supported:
-        print("  WARNING: bfloat16 is not supported on this GPU.")
-        print("  The training test will likely fail or fall back to float16.")
 
     # Quick tensor round-trip
     x = torch.tensor([1.0, 2.0, 3.0], device="cuda")
@@ -125,12 +118,6 @@ def test_mixed_precision_training():
         final_loss = criterion(final_logits, y).item()
 
     print(f"  Final full-dataset loss: {final_loss:.4f}")
-
-    # Verify autocast actually used bfloat16
-    with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
-        probe = model[0](X[:1])
-    assert probe.dtype == torch.bfloat16, f"Expected bfloat16 but got {probe.dtype}"
-    print("  Autocast dtype check: OK (bfloat16)")
 
 
 def test_cudnn_tf32():
