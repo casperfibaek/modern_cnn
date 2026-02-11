@@ -211,3 +211,4 @@ datasets/**/*
 logs/**/*
 
 nohup.out
+cuda/**/*

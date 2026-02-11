@@ -21,7 +21,13 @@ except ImportError:
 from models.convnextv2 import (
     convnextv2_atto, convnextv2_femto, convnextv2_pico,
     convnextv2_nano, convnextv2_tiny, convnextv2_base,
-    convnextv2_large, convnextv2_huge
+    convnextv2_large, convnextv2_huge,
+)
+from models.pelk import pelk_pico_lk
+from models.unireplknet import (
+    unireplknet_atto, unireplknet_femto, unireplknet_pico,
+    unireplknet_nano, unireplknet_tiny, unireplknet_small,
+    unireplknet_base, unireplknet_large, unireplknet_huge,
 )
 import argparse
 from typing import Optional
@@ -40,7 +46,7 @@ CONFIG = {
     'num_workers': min(os.cpu_count() or 4, 8),
     'save_dir': './checkpoints',
     'logs_dir': './logs',
-    'model': 'convnextv2_pico',  # Default model
+    'model': 'unireplknet_atto',
     'drop_path_rate': 0.2,
     'precision': 'bf16-mixed',  # bfloat16 mixed precision
 }
@@ -56,6 +62,16 @@ AVAILABLE_MODELS = {
     'convnextv2_base': convnextv2_base,
     'convnextv2_large': convnextv2_large,
     'convnextv2_huge': convnextv2_huge,
+    'pelk_pico_lk': pelk_pico_lk,
+    'unireplknet_atto': unireplknet_atto,
+    'unireplknet_femto': unireplknet_femto,
+    'unireplknet_pico': unireplknet_pico,
+    'unireplknet_nano': unireplknet_nano,
+    'unireplknet_tiny': unireplknet_tiny,
+    'unireplknet_small': unireplknet_small,
+    'unireplknet_base': unireplknet_base,
+    'unireplknet_large': unireplknet_large,
+    'unireplknet_huge': unireplknet_huge,
 }
 
 
@@ -198,8 +214,8 @@ class ImagenetteDataModule(pl.LightningDataModule):
         )
 
 
-class ConvNeXtV2Classifier(pl.LightningModule):
-    """Lightning Module for ConvNeXtV2 classification."""
+class ModelSelector(pl.LightningModule):
+    """Lightning Module for classification."""
 
     def __init__(
         self,
@@ -308,7 +324,7 @@ def run_benchmark(
     print("=" * 60)
 
     # Create model
-    model = ConvNeXtV2Classifier(
+    model = ModelSelector(
         model_name=model_name,
         num_classes=num_classes,
         learning_rate=learning_rate,
