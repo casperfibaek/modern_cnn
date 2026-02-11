@@ -12,8 +12,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.checkpoint as checkpoint
-from .utils import _trunc_normal_, DropPath, LayerNorm, GRNwithNHWC, to_2tuple, NCHWtoNHWC, NHWCtoNCHW
-
+from .utils import _trunc_normal_, DropPath, LayerNorm, GRNwithNHWC, to_2tuple, NCHWtoNHWC, NHWCtoNCHW, CoordAttBlock
 
 
 
@@ -32,28 +31,6 @@ def get_bn(dim, use_sync_bn=False):
         return nn.SyncBatchNorm(dim)
     else:
         return nn.BatchNorm2d(dim)
-
-class SEBlock(nn.Module):
-    """
-    Squeeze-and-Excitation Block proposed in SENet (https://arxiv.org/abs/1709.01507)
-    We assume the inputs to this layer are (N, C, H, W)
-    """
-    def __init__(self, input_channels, internal_neurons):
-        super(SEBlock, self).__init__()
-        self.down = nn.Conv2d(in_channels=input_channels, out_channels=internal_neurons,
-                              kernel_size=1, stride=1, bias=True)
-        self.up = nn.Conv2d(in_channels=internal_neurons, out_channels=input_channels,
-                            kernel_size=1, stride=1, bias=True)
-        self.input_channels = input_channels
-        self.nonlinear = nn.ReLU(inplace=True)
-
-    def forward(self, inputs):
-        x = F.adaptive_avg_pool2d(inputs, output_size=(1, 1))
-        x = self.down(x)
-        x = self.nonlinear(x)
-        x = self.up(x)
-        x = F.sigmoid(x)
-        return inputs * x.view(-1, self.input_channels, 1, 1)
 
 def fuse_bn(conv, bn):
     conv_bias = 0 if conv.bias is None else conv.bias
@@ -159,7 +136,6 @@ class DilatedReparamBlock(nn.Module):
 
 
 class UniRepLKNetBlock(nn.Module):
-
     def __init__(self,
                  dim,
                  kernel_size,
@@ -192,7 +168,7 @@ class UniRepLKNetBlock(nn.Module):
         else:
             self.norm = get_bn(dim, use_sync_bn=use_sync_bn)
 
-        self.se = SEBlock(dim, dim // 4)
+        self.se = CoordAttBlock(dim, dim)
 
         ffn_dim = int(ffn_factor * dim)
         self.pwconv1 = nn.Sequential(
@@ -406,7 +382,6 @@ class UniRepLKNet(nn.Module):
 
 
 # ===================== Factory functions =====================
-
 def unireplknet_atto(**kwargs):
     model = UniRepLKNet(depths=UniRepLKNet_A_F_P_depths, dims=(40, 80, 160, 320), **kwargs)
     return model

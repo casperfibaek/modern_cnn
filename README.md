@@ -10,3 +10,6 @@ torch.set_float32_matmul_precision("high")  # also silences the torch.compile wa
 /checkpoints/....
 
 # GRID Drivers necessary for shared vGPUs
+`sudo apt install ./nvidia-linux-grid-570_570.172.08_amd64.deb`
+
+# Should the coordinate attention block use batchnorm?

@@ -24,7 +24,7 @@ from models.convnextv2 import (
     convnextv2_large, convnextv2_huge,
 )
 from models.pelk import pelk_pico_lk
-from models.unireplknet import (
+from models.unireplknet_ct import (
     unireplknet_atto, unireplknet_femto, unireplknet_pico,
     unireplknet_nano, unireplknet_tiny, unireplknet_small,
     unireplknet_base, unireplknet_large, unireplknet_huge,
@@ -46,7 +46,7 @@ CONFIG = {
     'num_workers': min(os.cpu_count() or 4, 8),
     'save_dir': './checkpoints',
     'logs_dir': './logs',
-    'model': 'unireplknet_atto',
+    'model': 'unireplknet_pico',
     'drop_path_rate': 0.2,
     'precision': 'bf16-mixed',  # bfloat16 mixed precision
 }
