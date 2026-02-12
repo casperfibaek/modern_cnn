@@ -23,12 +23,13 @@ from models.convnextv2_ct import (
     convnextv2_nano, convnextv2_tiny, convnextv2_base,
     convnextv2_large, convnextv2_huge,
 )
-from models.pelk import pelk_pico_lk
 from models.unireplknet_ct import (
     unireplknet_atto, unireplknet_femto, unireplknet_pico,
     unireplknet_nano, unireplknet_tiny, unireplknet_small,
     unireplknet_base, unireplknet_large, unireplknet_huge,
 )
+from models.coreccn import CoreEncoder
+
 import argparse
 from typing import Optional
 
@@ -46,7 +47,7 @@ CONFIG = {
     'num_workers': min(os.cpu_count() or 4, 8),
     'save_dir': './checkpoints',
     'logs_dir': './logs',
-    'model': 'unireplknet_large',
+    'model': 'corecnn',
     'drop_path_rate': 0.3,
     'precision': 'bf16-mixed',  # bfloat16 mixed precision
 }
@@ -62,7 +63,6 @@ AVAILABLE_MODELS = {
     'convnextv2_base': convnextv2_base,
     'convnextv2_large': convnextv2_large,
     'convnextv2_huge': convnextv2_huge,
-    'pelk_pico_lk': pelk_pico_lk,
     'unireplknet_atto': unireplknet_atto,
     'unireplknet_femto': unireplknet_femto,
     'unireplknet_pico': unireplknet_pico,
@@ -72,6 +72,7 @@ AVAILABLE_MODELS = {
     'unireplknet_base': unireplknet_base,
     'unireplknet_large': unireplknet_large,
     'unireplknet_huge': unireplknet_huge,
+    'corecnn': CoreEncoder,
 }
 
 
@@ -155,6 +156,7 @@ class ImagenetteDataModule(pl.LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.num_classes = None
+        self.num_channels = None
 
     def setup(self, stage: Optional[str] = None):
         """Load datasets."""
@@ -182,6 +184,8 @@ class ImagenetteDataModule(pl.LightningDataModule):
             self.val_dataset = PreprocessedDataset(
                 val_images_path, val_labels_path, transform=val_transform
             )
+            sample_image, _ = self.train_dataset[0]
+            self.num_channels = int(sample_image.shape[0])
 
     def train_dataloader(self):
         return DataLoader(
@@ -211,6 +215,7 @@ class ModelSelector(pl.LightningModule):
         self,
         model_name: str,
         num_classes: int,
+        in_chans: int = 3,
         learning_rate: float = 1e-3,
         weight_decay: float = 0.05,
         drop_path_rate: float = 0.2,
@@ -223,6 +228,7 @@ class ModelSelector(pl.LightningModule):
         model_fn = AVAILABLE_MODELS[model_name]
         self.model = model_fn(
             num_classes=num_classes,
+            in_chans=in_chans,
             drop_path_rate=drop_path_rate
         )
 
@@ -309,6 +315,7 @@ def run_benchmark(
     num_classes = data_module.num_classes
 
     print(f"Number of classes: {num_classes}")
+    print(f"Input channels: {data_module.num_channels}")
     print(f"Training samples: {len(data_module.train_dataset)}")
     print(f"Validation samples: {len(data_module.val_dataset)}")
     print("=" * 60)
@@ -317,6 +324,7 @@ def run_benchmark(
     model = ModelSelector(
         model_name=model_name,
         num_classes=num_classes,
+        in_chans=data_module.num_channels,
         learning_rate=learning_rate,
         weight_decay=config['weight_decay'],
         drop_path_rate=config['drop_path_rate'],

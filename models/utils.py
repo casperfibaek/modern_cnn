@@ -141,7 +141,7 @@ class CoordAttBlock(nn.Module):
         mip = max(8, inp // groups)
 
         self.conv1 = nn.Conv2d(inp, mip, kernel_size=1, stride=1, padding=0)
-        self.bn1 = nn.BatchNorm2d(mip)
+        self.norm1 = LayerNorm(mip, eps=1e-6, data_format="channels_first")
         self.conv2 = nn.Conv2d(mip, oup, kernel_size=1, stride=1, padding=0)
         self.conv3 = nn.Conv2d(mip, oup, kernel_size=1, stride=1, padding=0)
         self.gelu = nn.GELU()
@@ -154,7 +154,7 @@ class CoordAttBlock(nn.Module):
 
         y = torch.cat([x_h, x_w], dim=2)
         y = self.conv1(y)
-        y = self.bn1(y)
+        y = self.norm1(y)
         y = self.gelu(y)
         x_h, x_w = torch.split(y, [h, w], dim=2)
         x_w = x_w.permute(0, 1, 3, 2)
@@ -167,3 +167,88 @@ class CoordAttBlock(nn.Module):
         y = identity * x_w * x_h
 
         return y
+
+
+def get_activation(activation_name):
+    if activation_name == "relu":
+        return nn.ReLU6(inplace=True)
+    elif isinstance(activation_name, torch.nn.modules.activation.ReLU6):
+        return activation_name
+
+    elif activation_name == "gelu":
+        return nn.GELU()
+    elif isinstance(activation_name, torch.nn.modules.activation.GELU):
+        return activation_name
+
+    elif activation_name == "leaky_relu":
+        return nn.LeakyReLU(inplace=True)
+    elif isinstance(activation_name, torch.nn.modules.activation.LeakyReLU):
+        return activation_name
+
+    elif activation_name == "prelu":
+        return nn.PReLU()
+    elif isinstance(activation_name, torch.nn.modules.activation.PReLU):
+        return activation_name
+
+    elif activation_name == "selu":
+        return nn.SELU(inplace=True)
+    elif isinstance(activation_name, torch.nn.modules.activation.SELU):
+        return activation_name
+
+    elif activation_name == "sigmoid":
+        return nn.Sigmoid()
+    elif isinstance(activation_name, torch.nn.modules.activation.Sigmoid):
+        return activation_name
+
+    elif activation_name == "tanh":
+        return nn.Tanh()
+    elif isinstance(activation_name, torch.nn.modules.activation.Tanh):
+        return activation_name
+
+    elif activation_name == "mish":
+        return nn.Mish()
+    elif isinstance(activation_name, torch.nn.modules.activation.Mish):
+        return activation_name
+    else:
+        raise ValueError(f"activation must be one of leaky_relu, prelu, selu, gelu, sigmoid, tanh, relu. Got: {activation_name}")
+
+
+def get_normalization(normalization_name, num_channels, num_groups=32, dims=2):
+    if normalization_name == "batch":
+        if dims == 1:
+            return nn.BatchNorm1d(num_channels)
+        elif dims == 2:
+            return nn.BatchNorm2d(num_channels)
+        elif dims == 3:
+            return nn.BatchNorm3d(num_channels)
+    elif normalization_name == "instance":
+        if dims == 1:
+            return nn.InstanceNorm1d(num_channels)
+        elif dims == 2:
+            return nn.InstanceNorm2d(num_channels)
+        elif dims == 3:
+            return nn.InstanceNorm3d(num_channels)
+    elif normalization_name == "layer":
+        return nn.LayerNorm(num_channels)
+    elif normalization_name == "group":
+        return nn.GroupNorm(num_groups=num_groups, num_channels=num_channels)
+    elif normalization_name == "bcn":
+        if dims == 1:
+            return nn.Sequential(
+                nn.BatchNorm1d(num_channels),
+                nn.GroupNorm(1, num_channels)
+            )
+        elif dims == 2:
+            return nn.Sequential(
+                nn.BatchNorm2d(num_channels),
+                nn.GroupNorm(1, num_channels)
+            )
+        elif dims == 3:
+            return nn.Sequential(
+                nn.BatchNorm3d(num_channels),
+                nn.GroupNorm(1, num_channels)
+            )    
+    elif normalization_name == "none":
+        return nn.Identity()
+    else:
+        raise ValueError(f"normalization must be one of batch, instance, layer, group, none. Got: {normalization_name}")
