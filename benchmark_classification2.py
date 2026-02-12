@@ -18,7 +18,7 @@ try:
     RICH_AVAILABLE = True
 except ImportError:
     RICH_AVAILABLE = False
-from models.convnextv2 import (
+from models.convnextv2_ct import (
     convnextv2_atto, convnextv2_femto, convnextv2_pico,
     convnextv2_nano, convnextv2_tiny, convnextv2_base,
     convnextv2_large, convnextv2_huge,
@@ -46,8 +46,8 @@ CONFIG = {
     'num_workers': min(os.cpu_count() or 4, 8),
     'save_dir': './checkpoints',
     'logs_dir': './logs',
-    'model': 'unireplknet_pico',
-    'drop_path_rate': 0.2,
+    'model': 'unireplknet_large',
+    'drop_path_rate': 0.3,
     'precision': 'bf16-mixed',  # bfloat16 mixed precision
 }
 
@@ -166,18 +166,8 @@ class ImagenetteDataModule(pl.LightningDataModule):
         classes = np.load(os.path.join(self.preprocessed_dir, 'classes.npy'), allow_pickle=True)
         self.num_classes = len(classes)
 
-        # Training augmentation on preprocessed 256x256 images
-        # Note: ColorJitter is disabled because it doesn't work properly on normalized images.
-        # If your preprocessed images are in [0, 1] range (not normalized), you can enable it.
-        # If they're normalized with ImageNet stats, ColorJitter will corrupt the images.
-        #
-        # Safe augmentations for normalized images:
-        # - RandomHorizontalFlip (geometric, works on any range)
-        # - RandomRotation, RandomCrop (geometric, works on any range)
-        # - RandomErasing (applied after normalization, designed for it)
         train_transform = transforms.Compose([
             transforms.RandomHorizontalFlip(),
-            # transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.1),  # Only use if images are in [0,1] range
             transforms.RandomErasing(p=0.5),  # Safe alternative for augmentation
             transforms.RandomRotation(15),  # Add rotation for more geometric augmentation
         ])

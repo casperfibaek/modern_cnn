@@ -1,17 +1,5 @@
-# UniRepLKNet: A Universal Perception Large-Kernel ConvNet for Audio, Video, Point Cloud, Time-Series and Image Recognition
-# Github source: https://github.com/AILab-CVC/UniRepLKNet
-# Licensed under The Apache License 2.0 License [see LICENSE for details]
-# Based on RepLKNet, ConvNeXt, timm, DINO and DeiT code bases
-# https://github.com/DingXiaoH/RepLKNet-pytorch
-# https://github.com/facebookresearch/ConvNeXt
-# https://github.com/rwightman/pytorch-image-models/tree/master/timm
-# https://github.com/facebookresearch/deit/
-# https://github.com/facebookresearch/dino
-# --------------------------------------------------------'
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import torch.utils.checkpoint as checkpoint
 from .utils import _trunc_normal_, DropPath, LayerNorm, GRNwithNHWC, to_2tuple, NCHWtoNHWC, NHWCtoNCHW, CoordAttBlock
 
 
@@ -26,50 +14,15 @@ def get_conv2d(in_channels, out_channels, kernel_size, stride, padding, dilation
                      padding=padding, dilation=dilation, groups=groups, bias=bias)
 
 
-def get_bn(dim, use_sync_bn=False):
-    if use_sync_bn:
-        return nn.SyncBatchNorm(dim)
-    else:
-        return nn.BatchNorm2d(dim)
-
-def fuse_bn(conv, bn):
-    conv_bias = 0 if conv.bias is None else conv.bias
-    std = (bn.running_var + bn.eps).sqrt()
-    return conv.weight * (bn.weight / std).reshape(-1, 1, 1, 1), bn.bias + (conv_bias - bn.running_mean) * bn.weight / std
-
-def convert_dilated_to_nondilated(kernel, dilate_rate):
-    identity_kernel = torch.ones((1, 1, 1, 1))
-    if kernel.size(1) == 1:
-        #   This is a DW kernel
-        dilated = F.conv_transpose2d(kernel, identity_kernel, stride=dilate_rate)
-        return dilated
-    else:
-        #   This is a dense or group-wise (but not DW) kernel
-        slices = []
-        for i in range(kernel.size(1)):
-            dilated = F.conv_transpose2d(kernel[:,i:i+1,:,:], identity_kernel, stride=dilate_rate)
-            slices.append(dilated)
-        return torch.cat(slices, dim=1)
-
-def merge_dilated_into_large_kernel(large_kernel, dilated_kernel, dilated_r):
-    large_k = large_kernel.size(2)
-    dilated_k = dilated_kernel.size(2)
-    equivalent_kernel_size = dilated_r * (dilated_k - 1) + 1
-    equivalent_kernel = convert_dilated_to_nondilated(dilated_kernel, dilated_r)
-    rows_to_pad = large_k // 2 - equivalent_kernel_size // 2
-    merged_kernel = large_kernel + F.pad(equivalent_kernel, [rows_to_pad] * 4)
-    return merged_kernel
-
-
 class DilatedReparamBlock(nn.Module):
     """
     Dilated Reparam Block proposed in UniRepLKNet (https://github.com/AILab-CVC/UniRepLKNet)
     We assume the inputs to this block are (N, C, H, W)
     """
-    def __init__(self, channels, kernel_size, deploy, use_sync_bn=False):
+    def __init__(self, channels, kernel_size):
         super().__init__()
         self.lk_origin = get_conv2d(channels, channels, kernel_size, stride=1,
-                                    padding=kernel_size//2, dilation=1, groups=channels, bias=deploy)
+                                    padding=kernel_size//2, dilation=1, groups=channels, bias=False)
 
         #   Default settings. We did not tune them carefully. Different settings may work better.
         if kernel_size == 17:
@@ -96,43 +49,21 @@ class DilatedReparamBlock(nn.Module):
         else:
             raise ValueError('Dilated Reparam Block requires kernel_size >= 5')
 
-        if not deploy:
-            self.origin_bn = get_bn(channels, use_sync_bn)
-            for k, r in zip(self.kernel_sizes, self.dilates):
-                self.__setattr__('dil_conv_k{}_{}'.format(k, r),
-                                 nn.Conv2d(in_channels=channels, out_channels=channels, kernel_size=k, stride=1,
-                                           padding=(r * (k - 1) + 1) // 2, dilation=r, groups=channels,
-                                           bias=False))
-                self.__setattr__('dil_bn_k{}_{}'.format(k, r), get_bn(channels, use_sync_bn=use_sync_bn))
+        self.origin_bn = nn.BatchNorm2d(channels)
+        for k, r in zip(self.kernel_sizes, self.dilates):
+            self.__setattr__('dil_conv_k{}_{}'.format(k, r),
+                             nn.Conv2d(in_channels=channels, out_channels=channels, kernel_size=k, stride=1,
+                                       padding=(r * (k - 1) + 1) // 2, dilation=r, groups=channels,
+                                       bias=False))
+            self.__setattr__('dil_bn_k{}_{}'.format(k, r), nn.BatchNorm2d(channels))
 
     def forward(self, x):
-        if not hasattr(self, 'origin_bn'):      # deploy mode
-            return self.lk_origin(x)
         out = self.origin_bn(self.lk_origin(x))
         for k, r in zip(self.kernel_sizes, self.dilates):
             conv = self.__getattr__('dil_conv_k{}_{}'.format(k, r))
             bn = self.__getattr__('dil_bn_k{}_{}'.format(k, r))
             out = out + bn(conv(x))
         return out
-
-    def merge_dilated_branches(self):
-        if hasattr(self, 'origin_bn'):
-            origin_k, origin_b = fuse_bn(self.lk_origin, self.origin_bn)
-            for k, r in zip(self.kernel_sizes, self.dilates):
-                conv = self.__getattr__('dil_conv_k{}_{}'.format(k, r))
-                bn = self.__getattr__('dil_bn_k{}_{}'.format(k, r))
-                branch_k, branch_b = fuse_bn(conv, bn)
-                origin_k = merge_dilated_into_large_kernel(origin_k, branch_k, r)
-                origin_b += branch_b
-            merged_conv = get_conv2d(origin_k.size(0), origin_k.size(0), origin_k.size(2), stride=1,
-                                    padding=origin_k.size(2)//2, dilation=1, groups=origin_k.size(0), bias=True)
-            merged_conv.weight.data = origin_k
-            merged_conv.bias.data = origin_b
-            self.lk_origin = merged_conv
-            self.__delattr__('origin_bn')
-            for k, r in zip(self.kernel_sizes, self.dilates):
-                self.__delattr__('dil_conv_k{}_{}'.format(k, r))
-                self.__delattr__('dil_bn_k{}_{}'.format(k, r))
 
 
 class UniRepLKNetBlock(nn.Module):
@@ -141,32 +72,20 @@ class UniRepLKNetBlock(nn.Module):
                  kernel_size,
                  drop_path=0.,
                  layer_scale_init_value=1e-6,
-                 deploy=False,
-                 with_cp=False,
-                 use_sync_bn=False,
                  ffn_factor=4):
         super().__init__()
-        self.with_cp = with_cp
-        if deploy:
-            print('------------------------------- Note: deploy mode')
-        if self.with_cp:
-            print('****** note with_cp = True, reduce memory consumption but may slow down training ******')
 
         if kernel_size == 0:
             self.dwconv = nn.Identity()
+            self.norm = nn.Identity()
         elif kernel_size >= 7:
-            self.dwconv = DilatedReparamBlock(dim, kernel_size, deploy=deploy,
-                                              use_sync_bn=use_sync_bn)
-
+            self.dwconv = DilatedReparamBlock(dim, kernel_size)
+            self.norm = nn.BatchNorm2d(dim)
         else:
             assert kernel_size in [3, 5]
             self.dwconv = get_conv2d(dim, dim, kernel_size=kernel_size, stride=1, padding=kernel_size // 2,
-                                     dilation=1, groups=dim, bias=deploy)
-
-        if deploy or kernel_size == 0:
-            self.norm = nn.Identity()
-        else:
-            self.norm = get_bn(dim, use_sync_bn=use_sync_bn)
+                                     dilation=1, groups=dim, bias=False)
+            self.norm = nn.BatchNorm2d(dim)
 
         self.se = CoordAttBlock(dim, dim)
 
@@ -176,19 +95,14 @@ class UniRepLKNetBlock(nn.Module):
             nn.Linear(dim, ffn_dim))
         self.act = nn.Sequential(
             nn.GELU(),
-            GRNwithNHWC(ffn_dim, use_bias=not deploy))
-        if deploy:
-            self.pwconv2 = nn.Sequential(
-                nn.Linear(ffn_dim, dim),
-                NHWCtoNCHW())
-        else:
-            self.pwconv2 = nn.Sequential(
-                nn.Linear(ffn_dim, dim, bias=False),
-                NHWCtoNCHW(),
-                get_bn(dim, use_sync_bn=use_sync_bn))
+            GRNwithNHWC(ffn_dim, use_bias=True))
+        self.pwconv2 = nn.Sequential(
+            nn.Linear(ffn_dim, dim, bias=False),
+            NHWCtoNCHW(),
+            nn.BatchNorm2d(dim))
 
         self.gamma = nn.Parameter(layer_scale_init_value * torch.ones(dim),
-                                  requires_grad=True) if (not deploy) and layer_scale_init_value is not None \
+                                  requires_grad=True) if layer_scale_init_value is not None \
                                                          and layer_scale_init_value > 0 else None
         self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
 
@@ -199,53 +113,8 @@ class UniRepLKNetBlock(nn.Module):
             y = self.gamma.view(1, -1, 1, 1) * y
         return self.drop_path(y)
 
-    def forward(self, inputs):
-
-        def _f(x):
-            return x + self.compute_residual(x)
-
-        if self.with_cp and inputs.requires_grad:
-            out = checkpoint.checkpoint(_f, inputs)
-        else:
-            out = _f(inputs)
-        return out
-
-    def reparameterize(self):
-        if hasattr(self.dwconv, 'merge_dilated_branches'):
-            self.dwconv.merge_dilated_branches()
-        if hasattr(self.norm, 'running_var'):
-            std = (self.norm.running_var + self.norm.eps).sqrt()
-            if hasattr(self.dwconv, 'lk_origin'):
-                self.dwconv.lk_origin.weight.data *= (self.norm.weight / std).view(-1, 1, 1, 1)
-                self.dwconv.lk_origin.bias.data = self.norm.bias + (
-                            self.dwconv.lk_origin.bias - self.norm.running_mean) * self.norm.weight / std
-            else:
-                conv = nn.Conv2d(self.dwconv.in_channels, self.dwconv.out_channels, self.dwconv.kernel_size,
-                                 self.dwconv.padding, self.dwconv.groups, bias=True)
-                conv.weight.data = self.dwconv.weight * (self.norm.weight / std).view(-1, 1, 1, 1)
-                conv.bias.data = self.norm.bias - self.norm.running_mean * self.norm.weight / std
-                self.dwconv = conv
-            self.norm = nn.Identity()
-        if self.gamma is not None:
-            final_scale = self.gamma.data
-            self.gamma = None
-        else:
-            final_scale = 1
-        if self.act[1].use_bias and len(self.pwconv2) == 3:
-            grn_bias = self.act[1].beta.data
-            self.act[1].__delattr__('beta')
-            self.act[1].use_bias = False
-            linear = self.pwconv2[0]
-            grn_bias_projected_bias = (linear.weight.data @ grn_bias.view(-1, 1)).squeeze()
-            bn = self.pwconv2[2]
-            std = (bn.running_var + bn.eps).sqrt()
-            new_linear = nn.Linear(linear.in_features, linear.out_features, bias=True)
-            new_linear.weight.data = linear.weight * (bn.weight / std * final_scale).view(-1, 1)
-            linear_bias = 0 if linear.bias is None else linear.bias.data
-            linear_bias += grn_bias_projected_bias
-            new_linear.bias.data = (bn.bias + (linear_bias - bn.running_mean) * bn.weight / std) * final_scale
-            self.pwconv2 = nn.Sequential(new_linear, self.pwconv2[1])
-
+    def forward(self, x):
+        return x + self.compute_residual(x)
 
 
 default_UniRepLKNet_A_F_P_kernel_sizes = ((3, 3),
@@ -290,9 +159,6 @@ class UniRepLKNet(nn.Module):
         layer_scale_init_value (float): Init value for Layer Scale. Default: 1e-6.
         head_init_scale (float): Init scaling value for classifier weights and biases. Default: 1.
         kernel_sizes (tuple(tuple(int))): Kernel size for each block. None means using the default settings. Default: None.
-        deploy (bool): deploy = True means using the inference structure. Default: False
-        with_cp (bool): with_cp = True means using torch.utils.checkpoint to save GPU memory. Default: False
-        use_sync_bn (bool): use_sync_bn = True means using sync BN. Use it if your batch size is small. Default: False
     """
     def __init__(self,
                  in_chans=3,
@@ -303,9 +169,6 @@ class UniRepLKNet(nn.Module):
                  layer_scale_init_value=1e-6,
                  head_init_scale=1.,
                  kernel_sizes=None,
-                 deploy=False,
-                 with_cp=False,
-                 use_sync_bn=False,
                  **kwargs
                  ):
         super().__init__()
@@ -313,20 +176,15 @@ class UniRepLKNet(nn.Module):
         depths = tuple(depths)
         if kernel_sizes is None:
             if depths in default_depths_to_kernel_sizes:
-                print('=========== use default kernel size ')
                 kernel_sizes = default_depths_to_kernel_sizes[depths]
             else:
                 raise ValueError('no default kernel size settings for the given depths, '
                                  'please specify kernel sizes for each block, e.g., '
                                  '((3, 3), (13, 13), (13, 13, 13, 13, 13, 13), (13, 13))')
-        print(kernel_sizes)
         for i in range(4):
             assert len(kernel_sizes[i]) == depths[i], 'kernel sizes do not match the depths'
 
-        self.with_cp = with_cp
-
         dp_rates = [x.item() for x in torch.linspace(0, drop_path_rate, sum(depths))]
-        print('=========== drop path rates: ', dp_rates)
 
         self.downsample_layers = nn.ModuleList()
         self.downsample_layers.append(nn.Sequential(
@@ -347,8 +205,7 @@ class UniRepLKNet(nn.Module):
         for i in range(4):
             main_stage = nn.Sequential(
                 *[UniRepLKNetBlock(dim=dims[i], kernel_size=kernel_sizes[i][j], drop_path=dp_rates[cur + j],
-                                   layer_scale_init_value=layer_scale_init_value, deploy=deploy,
-                                   with_cp=with_cp, use_sync_bn=use_sync_bn) for j in
+                                   layer_scale_init_value=layer_scale_init_value) for j in
                   range(depths[i])])
             self.stages.append(main_stage)
             cur += depths[i]
@@ -374,11 +231,6 @@ class UniRepLKNet(nn.Module):
         x = self.norm(x.mean([-2, -1]))
         x = self.head(x)
         return x
-
-    def reparameterize_unireplknet(self):
-        for m in self.modules():
-            if hasattr(m, 'reparameterize'):
-                m.reparameterize()
 
 
 # ===================== Factory functions =====================
