@@ -28,7 +28,7 @@ from models.unireplknet_ct import (
     unireplknet_nano, unireplknet_tiny, unireplknet_small,
     unireplknet_base, unireplknet_large, unireplknet_huge,
 )
-from models.coreccn import CoreEncoder
+from models.coreccn_fast import CoreEncoder
 
 import argparse
 from typing import Optional
@@ -232,6 +232,9 @@ class ModelSelector(pl.LightningModule):
             drop_path_rate=drop_path_rate
         )
 
+        self.model = self.model.to(memory_format=torch.channels_last)
+        self.model = torch.compile(self.model)
+
         self.criterion = nn.CrossEntropyLoss()
 
         # Count parameters
@@ -239,6 +242,7 @@ class ModelSelector(pl.LightningModule):
         print(f"Model {model_name} created with {total_params:,} parameters")
 
     def forward(self, x):
+        x = x.to(memory_format=torch.channels_last)
         return self.model(x)
 
     def training_step(self, batch, batch_idx):
