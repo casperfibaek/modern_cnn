@@ -29,6 +29,7 @@ from models.unireplknet_ct import (
     unireplknet_base, unireplknet_large, unireplknet_huge,
 )
 from models.coreccn_fast import CoreEncoder
+from models.diamond_base import DiamondNet
 
 import argparse
 from typing import Optional
@@ -47,8 +48,8 @@ CONFIG = {
     'num_workers': min(os.cpu_count() or 4, 8),
     'save_dir': './checkpoints',
     'logs_dir': './logs',
-    'model': 'corecnn',
-    'drop_path_rate': 0.3,
+    'model': 'diamondnet',
+    'drop_path_rate': 0.0,
     'precision': 'bf16-mixed',  # bfloat16 mixed precision
 }
 
@@ -73,6 +74,7 @@ AVAILABLE_MODELS = {
     'unireplknet_large': unireplknet_large,
     'unireplknet_huge': unireplknet_huge,
     'corecnn': CoreEncoder,
+    'diamondnet': DiamondNet,
 }
 
 
