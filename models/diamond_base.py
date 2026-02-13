@@ -89,34 +89,71 @@ class DiamondNet(nn.Module):
         num_classes=1,
         depths=None,
         dims=None,
-        drop_path_rate=None,
+        drop_path_rate=0.0,
         head_init_scale=1.0,
     ):
         super(DiamondNet, self).__init__()
 
         
-        self.depths = [2, 2, 2, 2] if depths is None else depths
-        self.dims = [96, 192, 384, 768] if dims is None else dims
+        self.depths = [2, 2, 3, 2] if depths is None else depths
+        self.dims = [32, 64, 96, 128] if dims is None else dims
         self.num_classes = num_classes
         self.in_chans = in_chans
-        self.upsample = nn.UpsamplingBilinear2d(scale_factor=2)
-        self.drop_path_rate = drop_path_rate if drop_path_rate is not None else 0.0
-        self.head_init_scale = head_init_scale if head_init_scale is not None else 0
+        self.drop_path_rate = drop_path_rate
+        self.head_init_scale = head_init_scale
 
-        self.pool_x2 = layers.AveragePooling2D(pool_size=2, strides=2, padding="valid")
+        self.upsample = nn.UpsamplingBilinear2d(scale_factor=2)
+        self.pool_x2 = f.AveragePooling2D(pool_size=2, strides=2, padding="valid")
         self.pool_x4 = layers.AveragePooling2D(pool_size=4, strides=4, padding="valid")
         self.pool_x8 = layers.AveragePooling2D(pool_size=8, strides=8, padding="valid")
 
-        self.stem = nn.Sequential(
+        self.stem_narrow = nn.Sequential(
+            BlockStem(self.in_chans + 1, self.dims[-1]),
+            LayerNorm(self.dims[-1], eps=1e-6, data_format="channels_first")
+        )
+        self.stem_wide = nn.Sequential(
             BlockStem(self.in_chans, self.dims[0]),
             LayerNorm(self.dims[0], eps=1e-6, data_format="channels_first")
         )
+
+        self.upsample_layers = nn.ModuleList()
+        for i in range(3):
+            upsample_layer = nn.Sequential(
+                    LayerNorm(dims[i], eps=1e-6, data_format="channels_first"),
+                    upsample,
+            )
+            self.upsample_layers.append(upsample_layer)
+
+        self.downsample_layers = nn.ModuleList()
+        for i in range(3):
+            downsample_layer = nn.Sequential(
+                    LayerNorm(dims[i], eps=1e-6, data_format="channels_first"),
+                    nn.AveragePooling2D(pool_size=2, strides=2, padding="valid"),
+            )
+            self.downsample_layers.append(downsample_layer)
+
+        self.stages_up = nn.ModuleList()
+        dp_rates = [x.item() for x in torch.linspace(0, drop_path_rate, sum(depths))]
+        cur = 0
+        for i in range(4):
+            stage = nn.Sequential(
+                *[Block(dim=dims[i], drop_path=dp_rates[cur + j]) for j in range(depths[i])]
+            )
+            self.stages_up.append(stage)
+            cur += depths[i]
+
+        self.stages_down = nn.ModuleList()
+        dp_rates = [x.item() for x in torch.linspace(0, drop_path_rate, sum(depths))]
+        cur = 0
+        for i in range(4):
+            stage = nn.Sequential(
+                *[Block(dim=dims[i], drop_path=dp_rates[cur + j]) for j in range(depths[i])]
+            )
+            self.stages_down.append(stage)
+            cur += depths[i]
         
         # Model output
-        self.head = nn.Sequential(
-            CNNBlock(self.dims[-1], self.dims[-1]),
-            nn.Conv2d(self.dims[-1], self.num_classes, 1),
-        )
+        self.head = nn.Linear(dims[-1], num_classes)
 
         self.apply(self._init_weights)
         self.head.weight.data.mul_(head_init_scale)
@@ -127,9 +164,8 @@ class DiamondNet(nn.Module):
             trunc_normal_(m.weight, std=.02)
             nn.init.constant_(m.bias, 0)
 
-    def forward(self, x):
-        identity = x
 
+    def forward_features(self, x):
         raw_x_256 = x
         raw_x_128 = self.pool_x2(raw_x_256)
         raw_x_64  = self.pool_x4(raw_x_256)
@@ -146,9 +182,48 @@ class DiamondNet(nn.Module):
 
         # From 32x32 -> 256x256
 
-        x = self.stem(x_32)
+        x = self.stem_narrow(x_32)
+
+        # 32x32 stage
+        x = self.stages_up[-1](x)
+        skip_32 = x
+        x = self.upsample_layers[-1](x)
+
+        # add 64x64 features
+        x = self.stages_up[-2](f.concat([x, x_64], dim=1))
+        skip_64 = x
+        x = self.upsample_layers[-2](x)
+
+        # add 128x128 features
+        x = self.stages_up[-3](f.concat([x, x_128], dim=1))
+        skip_128 = x
+        x = self.upsample_layers[-3](x)
+
+        # add 256x256 features
+        x = self.stages_up[-4](f.concat([x, x_256], dim=1))
+        skip_256 = x
+
+        x = x + self.stem_wide(x_256, dim=1)
+
+        x = self.stages_down[0](x)
+        x = self.downsample_layers[0](x)
+
+        x = x + skip_128
+        x = self.stages_down[1](f.concat([x, x_128], dim=1))
+        x = self.downsample_layers[1](x)
+
+        x = x + skip_64
+        x = self.stages_down[2](f.concat([x, x_64], dim=1))
+        x = self.downsample_layers[2](x)
+
+        x = x + skip_32
+        x = self.stages_down[3](f.concat([x, x_32], dim=1))
+
+        return self.norm(x.mean([-2, -1]))
 
 
+    def forward(self, x):
+        x = self.forward_features(x)
         x = self.head(x)
 
         return x
@@ -168,7 +243,6 @@ if __name__ == "__main__":
         input_size=BATCH_SIZE,
         depths = [3, 3, 3, 3],
         dims = [32, 48, 64, 80],
-        # dims=[96, 192, 384, 768],
     )
 
     model(torch.randn((BATCH_SIZE, CHANNELS, HEIGHT, WIDTH)))
