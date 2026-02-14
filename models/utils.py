@@ -169,6 +169,21 @@ class CoordAttBlock(nn.Module):
         return y
 
 
+def pooled_mean_std_all_channels(x, k, stride=None, eps=1e-6):
+    # x: [B, C, H, W]
+    stride = k if stride is None else stride
+
+    # E[X] and E[X^2] over spatial window, per channel
+    ex  = F.avg_pool2d(x, k, stride)          # [B, C, H', W']
+    ex2 = F.avg_pool2d(x.square(), k, stride) # [B, C, H', W']
+
+    var = (ex2 - ex.square()).clamp_min(0.0)
+    std = torch.sqrt(var + eps)
+
+    # std: [B, C, H//k, W//k]
+    return std
+
+
 def get_activation(activation_name):
     if activation_name == "relu":
         return nn.ReLU6(inplace=True)

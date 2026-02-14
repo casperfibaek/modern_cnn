@@ -48,8 +48,8 @@ CONFIG = {
     'num_workers': min(os.cpu_count() or 4, 8),
     'save_dir': './checkpoints',
     'logs_dir': './logs',
-    'model': 'diamondnet',
-    'drop_path_rate': 0.0,
+    'model': 'convnextv2_base',
+    'drop_path_rate': 0.1,
     'precision': 'bf16-mixed',  # bfloat16 mixed precision
 }
 
@@ -283,9 +283,17 @@ class ModelSelector(pl.LightningModule):
             lr=self.hparams.learning_rate,
             weight_decay=self.hparams.weight_decay
         )
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        warmup_epochs = 5
+        warmup_scheduler = torch.optim.lr_scheduler.LinearLR(
+            optimizer, start_factor=1e-3, total_iters=warmup_epochs
+        )
+        cosine_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, T_max=self.hparams.max_epochs - warmup_epochs
+        )
+        scheduler = torch.optim.lr_scheduler.SequentialLR(
             optimizer,
-            T_max=self.hparams.max_epochs
+            schedulers=[warmup_scheduler, cosine_scheduler],
+            milestones=[warmup_epochs],
         )
         return {
             'optimizer': optimizer,

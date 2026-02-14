@@ -4,24 +4,9 @@ import torch.nn.functional as F
 from torch.utils.checkpoint import checkpoint
 from timm.models.layers import trunc_normal_, DropPath
 try:
-    from .utils import LayerNorm, GRN, CoordAttBlock
+    from .utils import LayerNorm, GRN, CoordAttBlock, pooled_mean_std_all_channels
 except ImportError:
-    from utils import LayerNorm, GRN, CoordAttBlock
-
-
-def pooled_mean_std_all_channels(x, k, stride=None, eps=1e-6):
-    # x: [B, C, H, W]
-    stride = k if stride is None else stride
-
-    # E[X] and E[X^2] over spatial window, then over channels
-    ex  = F.avg_pool2d(x, k, stride).mean(dim=1, keepdim=True)          # [B,1,H',W']
-    ex2 = F.avg_pool2d(x.square(), k, stride).mean(dim=1, keepdim=True) # [B,1,H',W']
-
-    var = (ex2 - ex.square()).clamp_min(0.0)
-    std = torch.sqrt(var + eps)
-
-    # std: [B, 1, H//k, W//k]
-    return std
+    from utils import LayerNorm, GRN, CoordAttBlock, pooled_mean_std_all_channels
 
 
 class BlockStem(nn.Module):
@@ -60,10 +45,15 @@ class Block(nn.Module):
         dim (int): Number of input channels.
         drop_path (float): Stochastic depth rate. Default: 0.0
     """
-    def __init__(self, dim, drop_path=0.):
+    def __init__(self, dim, drop_path=0., att=False):
         super().__init__()
         self.dwconv = nn.Conv2d(dim, dim, kernel_size=7, padding=3, groups=dim) # depthwise conv
-        self.ca = CoordAttBlock(dim, dim)
+
+        if att:
+            self.ca = CoordAttBlock(dim, dim)
+        else:
+            self.ca = nn.Identity()
+
         self.norm = LayerNorm(dim, eps=1e-6)
         self.pwconv1 = nn.Linear(dim, 4 * dim) # pointwise/1x1 convs, implemented with linear layers
         self.act = nn.GELU()
@@ -89,7 +79,7 @@ class Block(nn.Module):
 
 class LightBlock(nn.Module):
     """Lightweight block for high-resolution stages. No 4x MLP expansion."""
-    def __init__(self, dim, drop_path=0.):
+    def __init__(self, dim, drop_path=0.0):
         super().__init__()
         self.dwconv = nn.Conv2d(dim, dim, kernel_size=7, padding=3, groups=dim)
         self.norm = nn.BatchNorm2d(dim)
@@ -118,10 +108,8 @@ class DiamondNet(nn.Module):
         self.drop_path_rate = drop_path_rate
         self.head_init_scale = head_init_scale
 
-        self.dp_rates = [x.item() for x in torch.linspace(0, self.drop_path_rate, sum(self.depths))]
-
         self.stem_narrow = nn.Sequential(
-            BlockStem(self.in_chans + 1, self.dims[-1]),
+            BlockStem(self.in_chans * 2, self.dims[-1]),
             LayerNorm(self.dims[-1], eps=1e-6, data_format="channels_first")
         )
         self.stem_wide = nn.Sequential(
@@ -131,8 +119,7 @@ class DiamondNet(nn.Module):
 
         # Upsample layers: bilinear 2x upsample is done inline in forward,
         # then features are concatenated with raw inputs and projected here
-        # i=0: dims[1]+in_chans -> dims[0], i=1: dims[2]+(in_chans+1) -> dims[1], i=2: dims[3]+(in_chans+1) -> dims[2]
-        raw_channels = [self.in_chans, self.in_chans + 1, self.in_chans + 1]
+        raw_channels = [self.in_chans, self.in_chans * 2, self.in_chans * 2]
         self.upsample_layers = nn.ModuleList()
         for i in range(3):
             in_ch = self.dims[i+1] + raw_channels[i]
@@ -152,7 +139,11 @@ class DiamondNet(nn.Module):
             )
             self.downsample_layers.append(downsample_layer)
 
-        dp_rates = [x.item() for x in torch.linspace(0, self.drop_path_rate, sum(self.depths))]
+        # Drop path: 0 at highest res (stage 0), linearly increasing for deeper stages
+        deep_depths = self.depths[1:]  # stages 1, 2, 3
+        deep_dp = [x.item() for x in torch.linspace(0, self.drop_path_rate, sum(deep_depths))]
+        dp_rates = [0.0] * self.depths[0]  # stage 0: no drop path
+        dp_rates.extend(deep_dp)
 
         self.stages_up = nn.ModuleList()
         cur = 0
@@ -204,26 +195,22 @@ class DiamondNet(nn.Module):
     def forward_features(self, x):
         x_256 = x
 
-        # x_32 needed first for stem_narrow — compute on main thread
-        x_32 = self._preprocess_scale(x, 8)
-
-        # Fork independent work to overlap with stem_narrow + stages_up[3]
-        fut_64  = torch.jit.fork(self._preprocess_scale, x, 4)
-        fut_128 = torch.jit.fork(self._preprocess_scale, x, 2)
-        fut_wide = torch.jit.fork(self.stem_wide, x_256)
+        # Precompute multi-scale inputs
+        x_32  = self._preprocess_scale(x, 8)
+        x_64  = self._preprocess_scale(x, 4)
+        x_128 = self._preprocess_scale(x, 2)
+        stem_wide_out = self.stem_wide(x_256)
 
         # ---- Up path: 32x32 -> 256x256 ----
         x = self.stem_narrow(x_32)
 
         x = self.stages_up[3](x)
         skip_32 = x
-        x_64 = torch.jit.wait(fut_64)
         x = F.interpolate(x, scale_factor=2, mode='bilinear', align_corners=True)
         x = self.upsample_layers[2](torch.cat([x, x_64], dim=1))
 
         x = self.stages_up[2](x)
         skip_64 = x
-        x_128 = torch.jit.wait(fut_128)
         x = F.interpolate(x, scale_factor=2, mode='bilinear', align_corners=True)
         x = self.upsample_layers[1](torch.cat([x, x_128], dim=1))
 
@@ -234,7 +221,6 @@ class DiamondNet(nn.Module):
         x = self._run_stage(self.stages_up[0], x)
 
         # ---- Down path: 256x256 -> 32x32 ----
-        stem_wide_out = torch.jit.wait(fut_wide)
         x = x + stem_wide_out
 
         x = self._run_stage(self.stages_down[0], x)

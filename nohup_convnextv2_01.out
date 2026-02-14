@@ -1,0 +1,669 @@
+/home/projects/modern_cnn/.venv/lib/python3.12/site-packages/timm/models/layers/__init__.py:49: FutureWarning: Importing from timm.models.layers is deprecated, please import via timm.layers
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.layers", FutureWarning)
+Using bfloat16 Automatic Mixed Precision (AMP)
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+/home/projects/modern_cnn/.venv/lib/python3.12/site-packages/pytorch_lightning/callbacks/model_checkpoint.py:881: Checkpoint directory /home/projects/modern_cnn/checkpoints/convnextv2_base_bs32_lr1em03 exists and is not empty.
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+/home/projects/modern_cnn/.venv/lib/python3.12/site-packages/pytorch_lightning/utilities/model_summary/model_summary.py:242: Precision bf16-mixed is not supported by the model summary.  Estimated model size in MB will not be accurate. Using 32 bits instead.
+
+============================================================
+ConvNeXtV2 Benchmark on Imagenette
+============================================================
+Model: convnextv2_base
+Batch size: 32
+Learning rate: 0.001
+Epochs: 100
+Precision: bf16-mixed
+Workers: 6
+============================================================
+
+
+============================================================
+Benchmarking: convnextv2_base
+Batch size: 32, Learning rate: 0.001
+============================================================
+Number of classes: 10
+Input channels: 3
+Training samples: 9469
+Validation samples: 3925
+============================================================
+Model convnextv2_base created with 89,245,290 parameters
+
+Starting training...
+┏━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┳━━━━━━━┓
+┃   ┃ Name      ┃ Type             ┃ Params ┃ Mode  ┃ FLOPs ┃
+┡━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━╇━━━━━━━┩
+│ 0 │ model     │ OptimizedModule  │ 89.2 M │ train │     0 │
+│ 1 │ criterion │ CrossEntropyLoss │      0 │ train │     0 │
+└───┴───────────┴──────────────────┴────────┴───────┴───────┘
+Trainable params: 89.2 M                                                        
+Non-trainable params: 0                                                         
+Total params: 89.2 M                                                            
+Total estimated model params size (MB): 356                                     
+Modules in train mode: 388                                                      
+Modules in eval mode: 0                                                         
+Total FLOPs: 0                                                                  
+/home/projects/modern_cnn/.venv/lib/python3.12/site-packages/pytorch_lightning/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+/home/projects/modern_cnn/.venv/lib/python3.12/site-packages/pytorch_lightning/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+
+Epoch 1/100 Summary:
+  Train Loss: 2.5211 | Train Acc: 20.69%
+  Val Loss: 2.3477 | Val Acc: 15.21%
+  LR: 0.001000
+------------------------------------------------------------
+
+Epoch 2/100 Summary:
+  Train Loss: 2.5083 | Train Acc: 11.08%
+  Val Loss: 2.2328 | Val Acc: 19.49%
+  LR: 0.000999
+------------------------------------------------------------
+
+Epoch 3/100 Summary:
+  Train Loss: 2.2782 | Train Acc: 16.02%
+  Val Loss: 2.1064 | Val Acc: 22.24%
+  LR: 0.000998
+------------------------------------------------------------
+
+Epoch 4/100 Summary:
+  Train Loss: 2.1872 | Train Acc: 19.91%
+  Val Loss: 2.1013 | Val Acc: 23.90%
+  LR: 0.000996
+------------------------------------------------------------
+
+Epoch 5/100 Summary:
+  Train Loss: 2.1435 | Train Acc: 21.24%
+  Val Loss: 2.1079 | Val Acc: 21.55%
+  LR: 0.000994
+------------------------------------------------------------
+
+Epoch 6/100 Summary:
+  Train Loss: 2.1663 | Train Acc: 20.61%
+  Val Loss: 2.0975 | Val Acc: 26.06%
+  LR: 0.000991
+------------------------------------------------------------
+
+Epoch 7/100 Summary:
+  Train Loss: 2.1090 | Train Acc: 23.34%
+  Val Loss: 2.0693 | Val Acc: 24.79%
+  LR: 0.000988
+------------------------------------------------------------
+
+Epoch 8/100 Summary:
+  Train Loss: 2.0874 | Train Acc: 24.37%
+  Val Loss: 2.0237 | Val Acc: 28.41%
+  LR: 0.000984
+------------------------------------------------------------
+
+Epoch 9/100 Summary:
+  Train Loss: 2.0549 | Train Acc: 26.78%
+  Val Loss: 2.0063 | Val Acc: 28.51%
+  LR: 0.000980
+------------------------------------------------------------
+
+Epoch 10/100 Summary:
+  Train Loss: 2.0399 | Train Acc: 26.92%
+  Val Loss: 1.9736 | Val Acc: 30.93%
+  LR: 0.000976
+------------------------------------------------------------
+
+Epoch 11/100 Summary:
+  Train Loss: 2.0324 | Train Acc: 26.98%
+  Val Loss: 1.9325 | Val Acc: 31.87%
+  LR: 0.000970
+------------------------------------------------------------
+
+Epoch 12/100 Summary:
+  Train Loss: 2.0051 | Train Acc: 27.85%
+  Val Loss: 1.9556 | Val Acc: 30.78%
+  LR: 0.000965
+------------------------------------------------------------
+
+Epoch 13/100 Summary:
+  Train Loss: 1.9914 | Train Acc: 29.14%
+  Val Loss: 1.9294 | Val Acc: 31.13%
+  LR: 0.000959
+------------------------------------------------------------
+
+Epoch 14/100 Summary:
+  Train Loss: 1.9639 | Train Acc: 29.91%
+  Val Loss: 1.9059 | Val Acc: 33.73%
+  LR: 0.000952
+------------------------------------------------------------
+
+Epoch 15/100 Summary:
+  Train Loss: 1.9612 | Train Acc: 29.98%
+  Val Loss: 1.8833 | Val Acc: 33.43%
+  LR: 0.000946
+------------------------------------------------------------
+
+Epoch 16/100 Summary:
+  Train Loss: 1.9267 | Train Acc: 31.20%
+  Val Loss: 1.8590 | Val Acc: 34.01%
+  LR: 0.000938
+------------------------------------------------------------
+
+Epoch 17/100 Summary:
+  Train Loss: 1.8969 | Train Acc: 33.32%
+  Val Loss: 1.8007 | Val Acc: 36.89%
+  LR: 0.000930
+------------------------------------------------------------
+
+Epoch 18/100 Summary:
+  Train Loss: 1.8815 | Train Acc: 34.01%
+  Val Loss: 1.8154 | Val Acc: 36.97%
+  LR: 0.000922
+------------------------------------------------------------
+
+Epoch 19/100 Summary:
+  Train Loss: 1.8428 | Train Acc: 35.55%
+  Val Loss: 1.7683 | Val Acc: 38.80%
+  LR: 0.000914
+------------------------------------------------------------
+
+Epoch 20/100 Summary:
+  Train Loss: 1.8082 | Train Acc: 37.18%
+  Val Loss: 1.7128 | Val Acc: 40.48%
+  LR: 0.000905
+------------------------------------------------------------
+
+Epoch 21/100 Summary:
+  Train Loss: 1.7888 | Train Acc: 38.00%
+  Val Loss: 1.7165 | Val Acc: 40.38%
+  LR: 0.000895
+------------------------------------------------------------
+
+Epoch 22/100 Summary:
+  Train Loss: 1.7546 | Train Acc: 39.61%
+  Val Loss: 1.6747 | Val Acc: 42.32%
+  LR: 0.000885
+------------------------------------------------------------
+
+Epoch 23/100 Summary:
+  Train Loss: 1.7484 | Train Acc: 39.67%
+  Val Loss: 1.6115 | Val Acc: 43.62%
+  LR: 0.000875
+------------------------------------------------------------
+
+Epoch 24/100 Summary:
+  Train Loss: 1.7104 | Train Acc: 40.34%
+  Val Loss: 1.5790 | Val Acc: 45.35%
+  LR: 0.000864
+------------------------------------------------------------
+
+Epoch 25/100 Summary:
+  Train Loss: 1.6608 | Train Acc: 42.93%
+  Val Loss: 1.5555 | Val Acc: 46.60%
+  LR: 0.000854
+------------------------------------------------------------
+
+Epoch 26/100 Summary:
+  Train Loss: 1.6385 | Train Acc: 43.56%
+  Val Loss: 1.5067 | Val Acc: 49.02%
+  LR: 0.000842
+------------------------------------------------------------
+
+Epoch 27/100 Summary:
+  Train Loss: 1.6273 | Train Acc: 44.09%
+  Val Loss: 1.5090 | Val Acc: 47.90%
+  LR: 0.000831
+------------------------------------------------------------
+
+Epoch 28/100 Summary:
+  Train Loss: 1.5969 | Train Acc: 45.57%
+  Val Loss: 1.4685 | Val Acc: 49.86%
+  LR: 0.000819
+------------------------------------------------------------
+
+Epoch 29/100 Summary:
+  Train Loss: 1.5642 | Train Acc: 46.45%
+  Val Loss: 1.4340 | Val Acc: 51.67%
+  LR: 0.000806
+------------------------------------------------------------
+
+Epoch 30/100 Summary:
+  Train Loss: 1.5475 | Train Acc: 47.48%
+  Val Loss: 1.4072 | Val Acc: 51.95%
+  LR: 0.000794
+------------------------------------------------------------
+
+Epoch 31/100 Summary:
+  Train Loss: 1.4879 | Train Acc: 49.40%
+  Val Loss: 1.3631 | Val Acc: 53.17%
+  LR: 0.000781
+------------------------------------------------------------
+
+Epoch 32/100 Summary:
+  Train Loss: 1.4862 | Train Acc: 49.53%
+  Val Loss: 1.3937 | Val Acc: 53.10%
+  LR: 0.000768
+------------------------------------------------------------
+
+Epoch 33/100 Summary:
+  Train Loss: 1.4520 | Train Acc: 51.33%
+  Val Loss: 1.3242 | Val Acc: 55.36%
+  LR: 0.000755
+------------------------------------------------------------
+
+Epoch 34/100 Summary:
+  Train Loss: 1.4054 | Train Acc: 52.22%
+  Val Loss: 1.2559 | Val Acc: 57.94%
+  LR: 0.000741
+------------------------------------------------------------
+
+Epoch 35/100 Summary:
+  Train Loss: 1.3681 | Train Acc: 53.81%
+  Val Loss: 1.2516 | Val Acc: 58.39%
+  LR: 0.000727
+------------------------------------------------------------
+
+Epoch 36/100 Summary:
+  Train Loss: 1.3488 | Train Acc: 54.83%
+  Val Loss: 1.2143 | Val Acc: 60.10%
+  LR: 0.000713
+------------------------------------------------------------
+
+Epoch 37/100 Summary:
+  Train Loss: 1.3065 | Train Acc: 55.80%
+  Val Loss: 1.2367 | Val Acc: 58.90%
+  LR: 0.000699
+------------------------------------------------------------
+
+Epoch 38/100 Summary:
+  Train Loss: 1.2701 | Train Acc: 57.22%
+  Val Loss: 1.1835 | Val Acc: 60.48%
+  LR: 0.000684
+------------------------------------------------------------
+
+Epoch 39/100 Summary:
+  Train Loss: 1.2360 | Train Acc: 58.27%
+  Val Loss: 1.1668 | Val Acc: 62.24%
+  LR: 0.000669
+------------------------------------------------------------
+
+Epoch 40/100 Summary:
+  Train Loss: 1.2052 | Train Acc: 59.57%
+  Val Loss: 1.1324 | Val Acc: 62.90%
+  LR: 0.000655
+------------------------------------------------------------
+
+Epoch 41/100 Summary:
+  Train Loss: 1.1837 | Train Acc: 60.30%
+  Val Loss: 1.1424 | Val Acc: 62.37%
+  LR: 0.000639
+------------------------------------------------------------
+
+Epoch 42/100 Summary:
+  Train Loss: 1.1515 | Train Acc: 61.18%
+  Val Loss: 1.1369 | Val Acc: 63.24%
+  LR: 0.000624
+------------------------------------------------------------
+
+Epoch 43/100 Summary:
+  Train Loss: 1.0975 | Train Acc: 63.44%
+  Val Loss: 1.1087 | Val Acc: 64.56%
+  LR: 0.000609
+------------------------------------------------------------
+
+Epoch 44/100 Summary:
+  Train Loss: 1.0786 | Train Acc: 63.35%
+  Val Loss: 1.0737 | Val Acc: 64.76%
+  LR: 0.000594
+------------------------------------------------------------
+
+Epoch 45/100 Summary:
+  Train Loss: 1.0507 | Train Acc: 65.04%
+  Val Loss: 1.0168 | Val Acc: 66.65%
+  LR: 0.000578
+------------------------------------------------------------
+
+Epoch 46/100 Summary:
+  Train Loss: 1.0198 | Train Acc: 65.76%
+  Val Loss: 1.0540 | Val Acc: 65.53%
+  LR: 0.000563
+------------------------------------------------------------
+
+Epoch 47/100 Summary:
+  Train Loss: 0.9847 | Train Acc: 67.08%
+  Val Loss: 0.9965 | Val Acc: 68.23%
+  LR: 0.000547
+------------------------------------------------------------
+
+Epoch 48/100 Summary:
+  Train Loss: 0.9496 | Train Acc: 68.10%
+  Val Loss: 1.0169 | Val Acc: 67.31%
+  LR: 0.000531
+------------------------------------------------------------
+
+Epoch 49/100 Summary:
+  Train Loss: 0.9276 | Train Acc: 68.90%
+  Val Loss: 1.0111 | Val Acc: 67.82%
+  LR: 0.000516
+------------------------------------------------------------
+
+Epoch 50/100 Summary:
+  Train Loss: 0.8992 | Train Acc: 69.36%
+  Val Loss: 0.9561 | Val Acc: 69.04%
+  LR: 0.000500
+------------------------------------------------------------
+
+Epoch 51/100 Summary:
+  Train Loss: 0.8698 | Train Acc: 71.14%
+  Val Loss: 0.9783 | Val Acc: 69.50%
+  LR: 0.000484
+------------------------------------------------------------
+
+Epoch 52/100 Summary:
+  Train Loss: 0.8180 | Train Acc: 72.54%
+  Val Loss: 0.9819 | Val Acc: 68.51%
+  LR: 0.000469
+------------------------------------------------------------
+
+Epoch 53/100 Summary:
+  Train Loss: 0.7878 | Train Acc: 73.42%
+  Val Loss: 0.9892 | Val Acc: 69.63%
+  LR: 0.000453
+------------------------------------------------------------
+
+Epoch 54/100 Summary:
+  Train Loss: 0.7730 | Train Acc: 74.54%
+  Val Loss: 1.0108 | Val Acc: 68.38%
+  LR: 0.000437
+------------------------------------------------------------
+
+Epoch 55/100 Summary:
+  Train Loss: 0.7236 | Train Acc: 75.93%
+  Val Loss: 0.9658 | Val Acc: 70.09%
+  LR: 0.000422
+------------------------------------------------------------
+
+Epoch 56/100 Summary:
+  Train Loss: 0.7045 | Train Acc: 75.77%
+  Val Loss: 0.9824 | Val Acc: 70.65%
+  LR: 0.000406
+------------------------------------------------------------
+
+Epoch 57/100 Summary:
+  Train Loss: 0.6777 | Train Acc: 77.30%
+  Val Loss: 1.0070 | Val Acc: 69.99%
+  LR: 0.000391
+------------------------------------------------------------
+
+Epoch 58/100 Summary:
+  Train Loss: 0.6253 | Train Acc: 79.12%
+  Val Loss: 0.9864 | Val Acc: 70.70%
+  LR: 0.000376
+------------------------------------------------------------
+
+Epoch 59/100 Summary:
+  Train Loss: 0.6026 | Train Acc: 79.88%
+  Val Loss: 1.0048 | Val Acc: 71.36%
+  LR: 0.000361
+------------------------------------------------------------
+
+Epoch 60/100 Summary:
+  Train Loss: 0.5641 | Train Acc: 81.03%
+  Val Loss: 1.0682 | Val Acc: 70.73%
+  LR: 0.000345
+------------------------------------------------------------
+
+Epoch 61/100 Summary:
+  Train Loss: 0.5492 | Train Acc: 81.63%
+  Val Loss: 1.0222 | Val Acc: 71.44%
+  LR: 0.000331
+------------------------------------------------------------
+
+Epoch 62/100 Summary:
+  Train Loss: 0.5141 | Train Acc: 82.76%
+  Val Loss: 1.0313 | Val Acc: 72.00%
+  LR: 0.000316
+------------------------------------------------------------
+
+Epoch 63/100 Summary:
+  Train Loss: 0.4819 | Train Acc: 84.21%
+  Val Loss: 0.9727 | Val Acc: 72.59%
+  LR: 0.000301
+------------------------------------------------------------
+
+Epoch 64/100 Summary:
+  Train Loss: 0.4555 | Train Acc: 84.61%
+  Val Loss: 1.0331 | Val Acc: 72.38%
+  LR: 0.000287
+------------------------------------------------------------
+
+Epoch 65/100 Summary:
+  Train Loss: 0.4333 | Train Acc: 85.84%
+  Val Loss: 1.0371 | Val Acc: 72.10%
+  LR: 0.000273
+------------------------------------------------------------
+
+Epoch 66/100 Summary:
+  Train Loss: 0.4077 | Train Acc: 86.33%
+  Val Loss: 1.0659 | Val Acc: 71.92%
+  LR: 0.000259
+------------------------------------------------------------
+
+Epoch 67/100 Summary:
+  Train Loss: 0.3886 | Train Acc: 87.04%
+  Val Loss: 1.0695 | Val Acc: 72.31%
+  LR: 0.000245
+------------------------------------------------------------
+
+Epoch 68/100 Summary:
+  Train Loss: 0.3579 | Train Acc: 88.27%
+  Val Loss: 1.0788 | Val Acc: 72.03%
+  LR: 0.000232
+------------------------------------------------------------
+
+Epoch 69/100 Summary:
+  Train Loss: 0.3647 | Train Acc: 87.74%
+  Val Loss: 1.0928 | Val Acc: 71.69%
+  LR: 0.000219
+------------------------------------------------------------
+
+Epoch 70/100 Summary:
+  Train Loss: 0.3335 | Train Acc: 88.64%
+  Val Loss: 1.1188 | Val Acc: 72.08%
+  LR: 0.000206
+------------------------------------------------------------
+
+Epoch 71/100 Summary:
+  Train Loss: 0.3315 | Train Acc: 88.93%
+  Val Loss: 1.0870 | Val Acc: 72.51%
+  LR: 0.000194
+------------------------------------------------------------
+
+Epoch 72/100 Summary:
+  Train Loss: 0.3123 | Train Acc: 89.65%
+  Val Loss: 1.1564 | Val Acc: 71.82%
+  LR: 0.000181
+------------------------------------------------------------
+
+Epoch 73/100 Summary:
+  Train Loss: 0.2998 | Train Acc: 89.98%
+  Val Loss: 1.1247 | Val Acc: 72.71%
+  LR: 0.000169
+------------------------------------------------------------
+
+Epoch 74/100 Summary:
+  Train Loss: 0.2704 | Train Acc: 91.03%
+  Val Loss: 1.1312 | Val Acc: 71.92%
+  LR: 0.000158
+------------------------------------------------------------
+
+Epoch 75/100 Summary:
+  Train Loss: 0.2682 | Train Acc: 91.13%
+  Val Loss: 1.1265 | Val Acc: 72.56%
+  LR: 0.000146
+------------------------------------------------------------
+
+Epoch 76/100 Summary:
+  Train Loss: 0.2540 | Train Acc: 91.60%
+  Val Loss: 1.1612 | Val Acc: 72.92%
+  LR: 0.000136
+------------------------------------------------------------
+
+Epoch 77/100 Summary:
+  Train Loss: 0.2397 | Train Acc: 92.16%
+  Val Loss: 1.2496 | Val Acc: 72.43%
+  LR: 0.000125
+------------------------------------------------------------
+
+Epoch 78/100 Summary:
+  Train Loss: 0.2282 | Train Acc: 92.72%
+  Val Loss: 1.1842 | Val Acc: 72.51%
+  LR: 0.000115
+------------------------------------------------------------
+
+Epoch 79/100 Summary:
+  Train Loss: 0.2299 | Train Acc: 92.38%
+  Val Loss: 1.1987 | Val Acc: 72.76%
+  LR: 0.000105
+------------------------------------------------------------
+
+Epoch 80/100 Summary:
+  Train Loss: 0.2200 | Train Acc: 92.83%
+  Val Loss: 1.2579 | Val Acc: 72.59%
+  LR: 0.000095
+------------------------------------------------------------
+
+Epoch 81/100 Summary:
+  Train Loss: 0.2031 | Train Acc: 93.15%
+  Val Loss: 1.1986 | Val Acc: 73.22%
+  LR: 0.000086
+------------------------------------------------------------
+
+Epoch 82/100 Summary:
+  Train Loss: 0.2058 | Train Acc: 93.41%
+  Val Loss: 1.2100 | Val Acc: 72.94%
+  LR: 0.000078
+------------------------------------------------------------
+
+Epoch 83/100 Summary:
+  Train Loss: 0.1827 | Train Acc: 94.08%
+  Val Loss: 1.2267 | Val Acc: 73.38%
+  LR: 0.000070
+------------------------------------------------------------
+
+Epoch 84/100 Summary:
+  Train Loss: 0.1901 | Train Acc: 93.80%
+  Val Loss: 1.2151 | Val Acc: 73.38%
+  LR: 0.000062
+  -> New best model! (Val Acc: 73.38%)
+------------------------------------------------------------
+
+Epoch 85/100 Summary:
+  Train Loss: 0.1819 | Train Acc: 94.37%
+  Val Loss: 1.2399 | Val Acc: 72.94%
+  LR: 0.000054
+------------------------------------------------------------
+
+Epoch 86/100 Summary:
+  Train Loss: 0.1838 | Train Acc: 94.05%
+  Val Loss: 1.2370 | Val Acc: 73.32%
+  LR: 0.000048
+------------------------------------------------------------
+
+Epoch 87/100 Summary:
+  Train Loss: 0.1729 | Train Acc: 94.33%
+  Val Loss: 1.2389 | Val Acc: 73.30%
+  LR: 0.000041
+------------------------------------------------------------
+
+Epoch 88/100 Summary:
+  Train Loss: 0.1604 | Train Acc: 95.00%
+  Val Loss: 1.2243 | Val Acc: 73.38%
+  LR: 0.000035
+  -> New best model! (Val Acc: 73.38%)
+------------------------------------------------------------
+
+Epoch 89/100 Summary:
+  Train Loss: 0.1650 | Train Acc: 94.70%
+  Val Loss: 1.2191 | Val Acc: 73.58%
+  LR: 0.000030
+------------------------------------------------------------
+
+Epoch 90/100 Summary:
+  Train Loss: 0.1573 | Train Acc: 94.69%
+  Val Loss: 1.2453 | Val Acc: 73.38%
+  LR: 0.000024
+------------------------------------------------------------
+
+Epoch 91/100 Summary:
+  Train Loss: 0.1545 | Train Acc: 95.05%
+  Val Loss: 1.2626 | Val Acc: 73.17%
+  LR: 0.000020
+------------------------------------------------------------
+
+Epoch 92/100 Summary:
+  Train Loss: 0.1622 | Train Acc: 94.90%
+  Val Loss: 1.2536 | Val Acc: 73.40%
+  LR: 0.000016
+`Trainer.fit` stopped: `max_epochs=100` reached.
+------------------------------------------------------------
+
+Epoch 93/100 Summary:
+  Train Loss: 0.1468 | Train Acc: 95.37%
+  Val Loss: 1.2412 | Val Acc: 73.07%
+  LR: 0.000012
+------------------------------------------------------------
+
+Epoch 94/100 Summary:
+  Train Loss: 0.1561 | Train Acc: 94.95%
+  Val Loss: 1.2443 | Val Acc: 73.48%
+  LR: 0.000009
+------------------------------------------------------------
+
+Epoch 95/100 Summary:
+  Train Loss: 0.1493 | Train Acc: 95.22%
+  Val Loss: 1.2450 | Val Acc: 73.48%
+  LR: 0.000006
+------------------------------------------------------------
+
+Epoch 96/100 Summary:
+  Train Loss: 0.1539 | Train Acc: 95.10%
+  Val Loss: 1.2443 | Val Acc: 73.48%
+  LR: 0.000004
+------------------------------------------------------------
+
+Epoch 97/100 Summary:
+  Train Loss: 0.1444 | Train Acc: 95.67%
+  Val Loss: 1.2430 | Val Acc: 73.40%
+  LR: 0.000002
+------------------------------------------------------------
+
+Epoch 98/100 Summary:
+  Train Loss: 0.1468 | Train Acc: 95.27%
+  Val Loss: 1.2469 | Val Acc: 73.38%
+  LR: 0.000001
+------------------------------------------------------------
+
+Epoch 99/100 Summary:
+  Train Loss: 0.1404 | Train Acc: 95.27%
+  Val Loss: 1.2459 | Val Acc: 73.35%
+  LR: 0.000000
+------------------------------------------------------------
+
+Epoch 100/100 Summary:
+  Train Loss: 0.1386 | Train Acc: 95.75%
+  Val Loss: 1.2453 | Val Acc: 73.45%
+  LR: 0.000000
+------------------------------------------------------------
+Epoch 99/99 ━━━━━━━━━━━━━━━━ 296/296 0:00:26 •       11.27it/s v_num: 1.000     
+                                     0:00:00                   train_loss_step: 
+                                                               0.142            
+                                                               train_acc_step:  
+                                                               0.931 val_loss:  
+                                                               1.245 val_acc:   
+                                                               0.735            
+                                                               train_loss_epoch:
+                                                               0.141            
+                                                               train_acc_epoch: 
+                                                               0.955            
+
+============================================================
+Training completed!
+Best validation accuracy: 73.58%
+Best model saved at: /home/projects/modern_cnn/checkpoints/convnextv2_base_bs32_lr1em03/best_model-v1.ckpt
+============================================================
